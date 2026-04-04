@@ -14,4 +14,4 @@ jobs:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
           channelId: live
-          projectId: YOUR_PROJECT_ID_HERE # <--- REPLACE WITH YOUR PROJECT ID
+          projectId: genaichatgpt-a7734 # <--- REPLACE WITH YOUR PROJECT ID
