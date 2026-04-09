@@ -1,0 +1,71 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: leads
+// Document ID: auto-generated
+// Fields:
+//   - name: string (required, 1-100 chars)
+//   - email: string (required, valid email format)
+//   - phone: string (required, 10-20 chars)
+//   - city: string (optional, 0-100 chars)
+//   - status: string (required, ['fresher', 'working_professional'])
+//   - role: string (optional, 0-100 chars)
+//   - createdAt: timestamp (required, server-generated)
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "ajay.ai.spoc@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidLead(data) {
+      return data.keys().hasAll(['name', 'email', 'phone', 'status', 'createdAt']) &&
+        data.keys().hasOnly(['name', 'email', 'phone', 'city', 'status', 'role', 'createdAt']) &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+        isValidEmail(data.email) &&
+        data.phone is string && data.phone.size() >= 10 && data.phone.size() <= 20 &&
+        (data.status == 'fresher' || data.status == 'working_professional' || data.status == 'professional') &&
+        (!('city' in data) || (data.city is string && data.city.size() <= 100)) &&
+        (!('role' in data) || (data.role is string && data.role.size() <= 100)) &&
+        data.createdAt == request.time;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /leads/{leadId} {
+      // Allow anyone to submit a lead (create)
+      allow create: if isValidLead(request.resource.data);
+      
+      // Only admins can read, update, or delete leads
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
+    }
+  }
+}

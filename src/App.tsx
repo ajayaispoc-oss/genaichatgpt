@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component, ErrorInfo, ReactNode } from 'react';
 import { 
   Database, 
   Cloud, 
@@ -28,7 +28,8 @@ import {
   Mail,
   Phone,
   MapPin,
-  User
+  User,
+  AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -41,6 +42,137 @@ import {
   ResponsiveContainer,
   Cell
 } from 'recharts';
+import { db, auth } from './firebase';
+import { collection, addDoc, serverTimestamp, getDocFromServer, doc } from 'firebase/firestore';
+
+// --- Firebase Connection Test ---
+async function testConnection() {
+  try {
+    // Attempt to fetch a non-existent document to test connectivity
+    await getDocFromServer(doc(db, 'test', 'connection'));
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message.includes('the client is offline') || error.message.includes('unavailable')) {
+        console.error("Firestore connectivity issue: The backend is unreachable. This may be due to network restrictions or an incorrect database ID.");
+      } else {
+        console.error("Firestore connection test error:", error.message);
+      }
+    }
+  }
+}
+testConnection();
+
+// --- Firebase Error Handling ---
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId: string | undefined;
+    email: string | null | undefined;
+    emailVerified: boolean | undefined;
+    isAnonymous: boolean | undefined;
+    tenantId: string | null | undefined;
+    providerInfo: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+// --- Error Boundary ---
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { hasError: false, error: null };
+
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("ErrorBoundary caught an error", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      let errorMessage = "Something went wrong. Please try again later.";
+      try {
+        if (this.state.error?.message) {
+          const parsed = JSON.parse(this.state.error.message);
+          if (parsed.error) errorMessage = `Error: ${parsed.error}`;
+        }
+      } catch {
+        // Not a JSON error
+      }
+
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+          <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center">
+            <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <AlertCircle className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Oops! Something went wrong</h2>
+            <p className="text-gray-600 mb-8">{errorMessage}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold hover:bg-blue-700 transition-all"
+            >
+              Refresh Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (this as any).props.children;
+  }
+}
 
 interface Chapter {
   id: number;
@@ -69,13 +201,31 @@ function DetailsPage({ onBack }: { onBack: () => void, key?: string }) {
   });
   const [submitted, setSubmitted] = useState(false);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const path = 'leads';
+      await addDoc(collection(db, path), {
+        ...formData,
+        createdAt: serverTimestamp()
+      });
+      setSubmitted(true);
+    } catch (err) {
+      handleFirestoreError(err, OperationType.CREATE, 'leads');
+      setError("Failed to submit enrollment request. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -100,9 +250,7 @@ function DetailsPage({ onBack }: { onBack: () => void, key?: string }) {
             <ArrowLeft className="w-5 h-5" /> Back to Home
           </button>
           <div className="flex items-center gap-2">
-            <div className="bg-blue-600 p-1.5 rounded-lg">
-              <BrainCircuit className="text-white w-5 h-5" />
-            </div>
+            <img src="/mylogo.png" alt="GenAI ChatGPT Logo" className="h-10 w-auto" referrerPolicy="no-referrer" />
             <span className="font-bold text-xl tracking-tight">GENAI CHATGPT</span>
           </div>
         </div>
@@ -442,6 +590,12 @@ function DetailsPage({ onBack }: { onBack: () => void, key?: string }) {
               </motion.div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
+                {error && (
+                  <div className="p-4 bg-red-50 text-red-600 rounded-xl flex items-center gap-2 text-sm font-medium">
+                    <AlertCircle className="w-4 h-4" />
+                    {error}
+                  </div>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* Name */}
                   <div className="space-y-2">
@@ -551,9 +705,15 @@ function DetailsPage({ onBack }: { onBack: () => void, key?: string }) {
 
                 <button
                   type="submit"
-                  className="w-full bg-blue-600 text-white py-6 rounded-2xl font-bold text-xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 mt-8"
+                  disabled={isSubmitting}
+                  className={`w-full py-6 rounded-2xl font-bold text-xl transition-all shadow-xl mt-8 flex items-center justify-center gap-2 ${
+                    isSubmitting 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'
+                  }`}
                 >
-                  Submit Enrollment Request
+                  {isSubmitting ? 'Submitting...' : 'Submit Enrollment Request'}
+                  {!isSubmitting && <ChevronRight className="w-6 h-6" />}
                 </button>
               </form>
             )}
@@ -576,6 +736,14 @@ function DetailsPage({ onBack }: { onBack: () => void, key?: string }) {
 }
 
 export default function App() {
+  return (
+    <ErrorBoundary>
+      <MainApp />
+    </ErrorBoundary>
+  );
+}
+
+function MainApp() {
   const [view, setView] = useState<'landing' | 'details'>('landing');
   const [activeChapter, setActiveChapter] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'features' | 'curriculum'>('features');
@@ -748,9 +916,7 @@ export default function App() {
           <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-6 py-4">
             <div className="max-w-7xl mx-auto flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <div className="bg-blue-600 p-1.5 rounded-lg">
-                  <BrainCircuit className="text-white w-5 h-5" />
-                </div>
+                <img src="/mylogo.png" alt="GenAI ChatGPT Logo" className="h-10 w-auto" referrerPolicy="no-referrer" />
                 <span className="font-bold text-xl tracking-tight">GENAI CHATGPT</span>
               </div>
               <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
@@ -1183,9 +1349,7 @@ export default function App() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-20">
             <div className="col-span-1 md:col-span-2">
               <div className="flex items-center gap-2 mb-6">
-                <div className="bg-blue-600 p-1.5 rounded-lg">
-                  <BrainCircuit className="text-white w-5 h-5" />
-                </div>
+                <img src="/mylogo.png" alt="GenAI ChatGPT Logo" className="h-10 w-auto" referrerPolicy="no-referrer" />
                 <span className="font-bold text-xl tracking-tight">GENAI CHATGPT</span>
               </div>
               <p className="text-gray-500 max-w-sm mb-8 leading-relaxed">
