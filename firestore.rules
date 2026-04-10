@@ -11,8 +11,10 @@ rules_version = '2';
 //   - email: string (required, valid email format)
 //   - phone: string (required, 10-20 chars)
 //   - city: string (optional, 0-100 chars)
-//   - status: string (required, ['fresher', 'working_professional'])
+//   - status: string (required, ['fresher', 'professional'])
 //   - role: string (optional, 0-100 chars)
+//   - experience: string/number (optional, for professionals)
+//   - jobRole: string (optional, for professionals)
 //   - createdAt: timestamp (required, server-generated)
 //
 // ===============================================================
@@ -40,14 +42,19 @@ service cloud.firestore {
     }
 
     function isValidLead(data) {
-      return data.keys().hasAll(['name', 'email', 'phone', 'status', 'createdAt']) &&
-        data.keys().hasOnly(['name', 'email', 'phone', 'city', 'status', 'role', 'createdAt']) &&
+      let allowedFields = ['name', 'email', 'phone', 'city', 'status', 'role', 'experience', 'jobRole', 'createdAt'];
+      let requiredFields = ['name', 'email', 'phone', 'status', 'createdAt'];
+      
+      return data.keys().hasAll(requiredFields) &&
+        data.keys().hasOnly(allowedFields) &&
         data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
         isValidEmail(data.email) &&
         data.phone is string && data.phone.size() >= 10 && data.phone.size() <= 20 &&
-        (data.status == 'fresher' || data.status == 'working_professional' || data.status == 'professional') &&
+        (data.status == 'fresher' || data.status == 'professional') &&
         (!('city' in data) || (data.city is string && data.city.size() <= 100)) &&
         (!('role' in data) || (data.role is string && data.role.size() <= 100)) &&
+        (!('experience' in data) || (data.experience is string || data.experience is number)) &&
+        (!('jobRole' in data) || (data.jobRole is string && data.jobRole.size() <= 100)) &&
         data.createdAt == request.time;
     }
 
@@ -61,6 +68,11 @@ service cloud.firestore {
       
       // Only admins can read, update, or delete leads
       allow read, update, delete: if isAdmin();
+    }
+
+    match /test/{docId} {
+      // Allow public read for connectivity testing
+      allow read: if true;
     }
 
     match /users/{userId} {

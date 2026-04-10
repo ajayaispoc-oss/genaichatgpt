@@ -197,7 +197,9 @@ function DetailsPage({ onBack }: { onBack: () => void, key?: string }) {
     phone: '',
     city: '',
     status: 'fresher',
-    role: ''
+    role: '',
+    experience: '',
+    jobRole: ''
   });
   const [submitted, setSubmitted] = useState(false);
 
@@ -215,10 +217,26 @@ function DetailsPage({ onBack }: { onBack: () => void, key?: string }) {
 
     try {
       const path = 'leads';
+      // 1. Save to Firestore (Primary)
       await addDoc(collection(db, path), {
         ...formData,
         createdAt: serverTimestamp()
       });
+
+      // 2. Send Email Alert (Secondary)
+      try {
+        await fetch('/api/enroll', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        });
+      } catch (emailErr) {
+        console.error("Email notification failed:", emailErr);
+        // We don't block the user if the email fails, as long as data is in Firestore
+      }
+
       setSubmitted(true);
     } catch (err) {
       handleFirestoreError(err, OperationType.CREATE, 'leads');
@@ -279,6 +297,197 @@ function DetailsPage({ onBack }: { onBack: () => void, key?: string }) {
         <div className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-hidden">
           <div className="absolute top-10 left-10 w-64 h-64 bg-blue-200 rounded-full blur-3xl opacity-30" />
           <div className="absolute bottom-10 right-10 w-96 h-96 bg-indigo-200 rounded-full blur-3xl opacity-30" />
+        </div>
+      </section>
+
+      {/* Enrollment Form Section (Moved to top for better accessibility) */}
+      <section id="enroll-form" className="py-12 px-6 bg-blue-600 relative overflow-hidden">
+        <div className="max-w-4xl mx-auto relative z-10">
+          <div className="bg-white rounded-[3rem] p-8 md:p-12 shadow-2xl">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold mb-2 tracking-tight text-gray-900">Enrollment Request</h2>
+              <p className="text-gray-600">Fill out the form below to start your journey.</p>
+            </div>
+
+            {submitted ? (
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="text-center py-12"
+              >
+                <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <CheckCircle2 className="w-10 h-10" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Request Submitted!</h3>
+                <p className="text-gray-600">Thank you for your interest. We will contact you at {formData.email} soon.</p>
+                <button 
+                  onClick={() => setSubmitted(false)}
+                  className="mt-8 text-blue-600 font-bold hover:underline"
+                >
+                  Submit another request
+                </button>
+              </motion.div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                  <div className="p-4 bg-red-50 text-red-600 rounded-xl flex items-center gap-2 text-sm font-medium">
+                    <AlertCircle className="w-4 h-4" />
+                    {error}
+                  </div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Name */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-700 flex items-center gap-2">
+                      <User className="w-3 h-3" /> Full Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      required
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      placeholder="John Doe"
+                      className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm"
+                    />
+                  </div>
+
+                  {/* Email */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-700 flex items-center gap-2">
+                      <Mail className="w-3 h-3" /> Email Address <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      required
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="john@example.com"
+                      className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm"
+                    />
+                  </div>
+
+                  {/* Phone */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-700 flex items-center gap-2">
+                      <Phone className="w-3 h-3" /> Phone Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      required
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      placeholder="+91 98765 43210"
+                      className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm"
+                    />
+                  </div>
+
+                  {/* City */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-gray-700 flex items-center gap-2">
+                      <MapPin className="w-3 h-3" /> City Name
+                    </label>
+                    <input
+                      type="text"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleChange}
+                      placeholder="Mumbai"
+                      className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Professional Status */}
+                <div className="space-y-2 pt-2">
+                  <label className="text-xs font-bold text-gray-700">Are you a Fresher or Working Professional? <span className="text-red-500">*</span></label>
+                  <div className="flex flex-wrap gap-2">
+                    <label className="flex items-center gap-2 p-3 rounded-xl bg-gray-50 border border-gray-100 cursor-pointer hover:bg-blue-50 transition-all flex-1 min-w-[150px]">
+                      <input
+                        type="radio"
+                        name="status"
+                        value="fresher"
+                        checked={formData.status === 'fresher'}
+                        onChange={handleChange}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="font-medium text-sm">Fresher</span>
+                    </label>
+                    <label className="flex items-center gap-2 p-3 rounded-xl bg-gray-50 border border-gray-100 cursor-pointer hover:bg-blue-50 transition-all flex-1 min-w-[150px]">
+                      <input
+                        type="radio"
+                        name="status"
+                        value="professional"
+                        checked={formData.status === 'professional'}
+                        onChange={handleChange}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="font-medium text-sm">Professional</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Conditional Fields for Professionals */}
+                {formData.status === 'professional' && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 overflow-hidden"
+                  >
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-700 flex items-center gap-2">
+                        <Briefcase className="w-3 h-3" /> Years of Experience <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        required={formData.status === 'professional'}
+                        type="number"
+                        name="experience"
+                        value={formData.experience}
+                        onChange={handleChange}
+                        placeholder="e.g. 5"
+                        className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-gray-700 flex items-center gap-2">
+                        <User className="w-3 h-3" /> Existing Job Role <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        required={formData.status === 'professional'}
+                        type="text"
+                        name="jobRole"
+                        value={formData.jobRole}
+                        onChange={handleChange}
+                        placeholder="e.g. Senior Developer"
+                        className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm"
+                      />
+                    </div>
+                  </motion.div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className={`w-full py-4 rounded-xl font-bold text-lg transition-all shadow-xl mt-4 flex items-center justify-center gap-2 ${
+                    isSubmitting 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'
+                  }`}
+                >
+                  {isSubmitting ? 'Submitting...' : 'Submit Enrollment Request'}
+                  {!isSubmitting && <ChevronRight className="w-5 h-5" />}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+        
+        {/* Background Accents */}
+        <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full translate-x-1/2 -translate-y-1/2 blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-400 rounded-full -translate-x-1/2 translate-y-1/2 blur-3xl" />
         </div>
       </section>
 
@@ -561,175 +770,9 @@ function DetailsPage({ onBack }: { onBack: () => void, key?: string }) {
         </div>
       </section>
 
-      {/* Enrollment Form Section */}
-      <section id="enroll-form" className="py-24 px-6 bg-blue-600 relative overflow-hidden">
-        <div className="max-w-4xl mx-auto relative z-10">
-          <div className="bg-white rounded-[3rem] p-8 md:p-16 shadow-2xl">
-            <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold mb-4 tracking-tight text-gray-900">Enrollment Request</h2>
-              <p className="text-gray-600">Fill out the form below and our team will get in touch with you shortly.</p>
-            </div>
-
-            {submitted ? (
-              <motion.div 
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="text-center py-12"
-              >
-                <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <CheckCircle2 className="w-10 h-10" />
-                </div>
-                <h3 className="text-2xl font-bold mb-2">Request Submitted!</h3>
-                <p className="text-gray-600">Thank you for your interest. We will contact you at {formData.email} soon.</p>
-                <button 
-                  onClick={() => setSubmitted(false)}
-                  className="mt-8 text-blue-600 font-bold hover:underline"
-                >
-                  Submit another request
-                </button>
-              </motion.div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {error && (
-                  <div className="p-4 bg-red-50 text-red-600 rounded-xl flex items-center gap-2 text-sm font-medium">
-                    <AlertCircle className="w-4 h-4" />
-                    {error}
-                  </div>
-                )}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Name */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                      <User className="w-4 h-4" /> Full Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      required
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleChange}
-                      placeholder="John Doe"
-                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
-                    />
-                  </div>
-
-                  {/* Email */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                      <Mail className="w-4 h-4" /> Email Address <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      required
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleChange}
-                      placeholder="john@example.com"
-                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
-                    />
-                  </div>
-
-                  {/* Phone */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                      <Phone className="w-4 h-4" /> Phone Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      required
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      placeholder="+91 98765 43210"
-                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
-                    />
-                  </div>
-
-                  {/* City */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                      <MapPin className="w-4 h-4" /> City Name (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleChange}
-                      placeholder="Mumbai"
-                      className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
-                    />
-                  </div>
-                </div>
-
-                {/* Professional Status */}
-                <div className="space-y-4 pt-4">
-                  <label className="text-sm font-bold text-gray-700">Are you a Fresher or Working Professional? <span className="text-red-500">*</span></label>
-                  <div className="flex flex-wrap gap-4">
-                    <label className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100 cursor-pointer hover:bg-blue-50 transition-all flex-1 min-w-[200px]">
-                      <input
-                        type="radio"
-                        name="status"
-                        value="fresher"
-                        checked={formData.status === 'fresher'}
-                        onChange={handleChange}
-                        className="w-5 h-5 text-blue-600"
-                      />
-                      <span className="font-medium">Fresher</span>
-                    </label>
-                    <label className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100 cursor-pointer hover:bg-blue-50 transition-all flex-1 min-w-[200px]">
-                      <input
-                        type="radio"
-                        name="status"
-                        value="professional"
-                        checked={formData.status === 'professional'}
-                        onChange={handleChange}
-                        className="w-5 h-5 text-blue-600"
-                      />
-                      <span className="font-medium">Working Professional</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Current Role */}
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700">Current Role / Designation</label>
-                  <input
-                    type="text"
-                    name="role"
-                    value={formData.role}
-                    onChange={handleChange}
-                    placeholder="e.g. Software Engineer, Student, etc."
-                    className="w-full px-5 py-4 rounded-2xl bg-gray-50 border border-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className={`w-full py-6 rounded-2xl font-bold text-xl transition-all shadow-xl mt-8 flex items-center justify-center gap-2 ${
-                    isSubmitting 
-                      ? 'bg-gray-400 cursor-not-allowed' 
-                      : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'
-                  }`}
-                >
-                  {isSubmitting ? 'Submitting...' : 'Submit Enrollment Request'}
-                  {!isSubmitting && <ChevronRight className="w-6 h-6" />}
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-        
-        {/* Background Accents */}
-        <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full translate-x-1/2 -translate-y-1/2 blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-400 rounded-full -translate-x-1/2 translate-y-1/2 blur-3xl" />
-        </div>
-      </section>
-
       {/* Footer */}
       <footer className="py-12 border-t border-gray-100 text-center text-gray-400 text-sm">
-        © 2026 GCP - DATA ENGINEERING. All rights reserved.
+        © 2026 GENAI CHATGPT. All rights reserved.
       </footer>
     </motion.div>
   );
