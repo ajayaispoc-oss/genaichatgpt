@@ -258,7 +258,10 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
-    console.log("WEBHOOK_URL loaded:", process.env.WEBHOOK_URL ? "Yes" : "No");
+    console.log("Environment Check:");
+    console.log("- WEBHOOK_URL:", process.env.WEBHOOK_URL ? "Configured" : "Missing");
+    console.log("- SMTP_HOST:", process.env.SMTP_HOST ? "Configured" : "Missing");
+    console.log("- SMTP_USER:", process.env.SMTP_USER ? "Configured" : "Missing");
   });
 }
 

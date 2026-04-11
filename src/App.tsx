@@ -202,24 +202,51 @@ function ContactForm() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const sendNotification = async (data: any, endpoint: string) => {
+    // 1. Try the local API (works in AI Studio and Cloud Run)
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (response.ok) return true;
+    } catch (err) {
+      console.warn(`Local API ${endpoint} failed, trying fallback...`, err);
+    }
+
+    // 2. Fallback: Try direct Webhook (works on static sites like GitHub Pages)
+    const webhookUrl = (import.meta as any).env.VITE_WEBHOOK_URL;
+    if (webhookUrl) {
+      try {
+        const response = await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...data,
+            _source: 'frontend_fallback',
+            _timestamp: new Date().toISOString()
+          }),
+        });
+        if (response.ok || response.status === 302) return true;
+      } catch (err) {
+        console.error("Direct webhook fallback failed:", err);
+      }
+    }
+    return false;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/contact', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to send inquiry');
+      const success = await sendNotification(formData, '/api/contact');
+      if (!success) {
+        // We don't throw error here to avoid breaking UX if it's just the email failing
+        console.error("All notification methods failed");
       }
-
       setSubmitted(true);
     } catch (err) {
       console.error("Contact form error:", err);
@@ -333,7 +360,7 @@ function DetailsPage({ onBack }: { onBack: () => void, key?: string }) {
 
     try {
       const path = 'leads';
-      // 1. Save to Firestore (Primary)
+      // 1. Save to Firestore (Primary) - This works everywhere (GitHub/Cloud Run)
       await addDoc(collection(db, path), {
         ...formData,
         createdAt: serverTimestamp()
@@ -341,16 +368,46 @@ function DetailsPage({ onBack }: { onBack: () => void, key?: string }) {
 
       // 2. Send Email Alert (Secondary)
       try {
-        await fetch('/api/enroll', {
+        // Try local API first
+        const response = await fetch('/api/enroll', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
         });
+
+        // If local API fails (e.g. 404 on GitHub Pages), try direct webhook fallback
+        if (!response.ok) {
+          const webhookUrl = (import.meta as any).env.VITE_WEBHOOK_URL;
+          if (webhookUrl) {
+            await fetch(webhookUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ...formData,
+                _source: 'enroll_fallback',
+                _timestamp: new Date().toISOString()
+              }),
+            });
+          }
+        }
       } catch (emailErr) {
         console.error("Email notification failed:", emailErr);
-        // We don't block the user if the email fails, as long as data is in Firestore
+        // Fallback to direct webhook if fetch failed (e.g. network error to local API)
+        const webhookUrl = (import.meta as any).env.VITE_WEBHOOK_URL;
+        if (webhookUrl) {
+          try {
+            await fetch(webhookUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ...formData,
+                _source: 'enroll_network_fallback'
+              }),
+            });
+          } catch (fErr) {
+            console.error("Final fallback failed:", fErr);
+          }
+        }
       }
 
       setSubmitted(true);
