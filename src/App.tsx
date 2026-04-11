@@ -29,7 +29,9 @@ import {
   Phone,
   MapPin,
   User,
-  AlertCircle
+  AlertCircle,
+  Menu,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -190,6 +192,120 @@ const salaryData = [
   { country: 'USA (Senior)', amount: 210000, display: '$210K+' },
 ];
 
+function ContactForm() {
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    description: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send inquiry');
+      }
+
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Contact form error:", err);
+      setError("Failed to send your inquiry. Please try again later.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (submitted) {
+    return (
+      <div className="text-center py-12">
+        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+          <CheckCircle2 className="w-8 h-8" />
+        </div>
+        <h3 className="text-2xl font-bold text-gray-900 mb-2">Inquiry Sent!</h3>
+        <p className="text-gray-600">Thank you for reaching out. Ajay will get back to you shortly.</p>
+        <button 
+          onClick={() => setSubmitted(false)}
+          className="mt-8 text-blue-600 font-bold hover:underline"
+        >
+          Send another message
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div>
+        <label className="block text-sm font-bold text-gray-700 mb-2">Full Name</label>
+        <input
+          required
+          type="text"
+          className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-4 focus:ring-blue-50 focus:border-blue-600 transition-all outline-none"
+          placeholder="Enter your name"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-bold text-gray-700 mb-2">Phone Number</label>
+        <input
+          required
+          type="tel"
+          className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-4 focus:ring-blue-50 focus:border-blue-600 transition-all outline-none"
+          placeholder="Enter your phone number"
+          value={formData.phone}
+          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-bold text-gray-700 mb-2">Your Requirement</label>
+        <textarea
+          required
+          rows={4}
+          className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50 focus:bg-white focus:ring-4 focus:ring-blue-50 focus:border-blue-600 transition-all outline-none resize-none"
+          placeholder="Describe your training requirements..."
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+        />
+      </div>
+      {error && (
+        <div className="p-4 bg-red-50 text-red-600 rounded-2xl text-sm font-medium flex items-center gap-2">
+          <AlertCircle className="w-4 h-4" />
+          {error}
+        </div>
+      )}
+      <button
+        disabled={isSubmitting}
+        type="submit"
+        className="w-full bg-blue-600 text-white py-5 rounded-2xl font-bold text-lg hover:bg-blue-700 transition-all shadow-xl shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+      >
+        {isSubmitting ? (
+          <>
+            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            Sending...
+          </>
+        ) : (
+          'Send Inquiry'
+        )}
+      </button>
+    </form>
+  );
+}
+
 function DetailsPage({ onBack }: { onBack: () => void, key?: string }) {
   const [formData, setFormData] = useState({
     name: '',
@@ -283,12 +399,11 @@ function DetailsPage({ onBack }: { onBack: () => void, key?: string }) {
             transition={{ delay: 0.2 }}
           >
             <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 leading-tight">
-              Why Data Engineering is the <br />
-              <span className="text-blue-600">Future of Technology.</span>
+              Mastering Agentic AI & <br />
+              <span className="text-blue-600">The Rise of the AI Architect.</span>
             </h1>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-10">
-              In the age of AI, data is the new oil. But raw oil is useless without a refinery. 
-              Data Engineering is the refinery that powers the world's most intelligent systems.
+              In 2026, Data Engineering has evolved. It's no longer just about pipelines; it's about building autonomous agentic systems that power the enterprise.
             </p>
           </motion.div>
         </div>
@@ -790,157 +905,99 @@ function MainApp() {
   const [view, setView] = useState<'landing' | 'details'>('landing');
   const [activeChapter, setActiveChapter] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'features' | 'curriculum'>('features');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const offset = 100;
+      const bodyRect = document.body.getBoundingClientRect().top;
+      const elementRect = element.getBoundingClientRect().top;
+      const elementPosition = elementRect - bodyRect;
+      const offsetPosition = elementPosition - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
+
+  const scrollToTab = (tab: 'features' | 'curriculum') => {
+    setActiveTab(tab);
+    setTimeout(() => scrollToSection('tab-section'), 100);
+  };
 
   // This will be populated as the user provides content
   const chapters: Chapter[] = [
     {
       id: 1,
-      title: "Generative AI on Google Cloud",
-      description: "Harnessing the power of Foundation Models and Vertex AI for GenAI solutions.",
+      title: "Agentic AI & Multi-Agent Systems (2026)",
+      description: "Mastering the shift from chatbots to autonomous agentic workflows.",
       topics: [
-        "Introduction to Generative AI & Large Language Models (LLMs)",
-        "Vertex AI Model Garden: Discovering Foundation Models (Gemini, PaLM 2)",
-        "Generative AI Studio: Prototyping with Language, Vision, and Multimodal",
-        "Prompt Engineering Techniques & Design Best Practices",
-        "Tuning Foundation Models: Supervised Fine-Tuning (SFT) & RLHF",
-        "Building GenAI Applications with Vertex AI SDK & LangChain",
-        "Responsible AI: Implementing Safety Filters & Ethical AI Practices"
+        "Introduction to Agentic Frameworks: CrewAI, LangGraph, & AutoGen",
+        "Designing Multi-Agent Systems for Enterprise Automation",
+        "Model Context Protocol (MCP): Connecting AI to Real-time Data",
+        "Building Agentic CLIs with Claude Code & Gemini AI Studio Pro",
+        "Vector Databases for Long-term Memory: Pinecone & Weaviate",
+        "Agentic Tool Use: Function Calling & API Orchestration",
+        "Responsible Agentic AI: Guardrails & Human-in-the-loop Patterns"
       ]
     },
     {
       id: 2,
-      title: "Data Engineering Fundamentals & Python for Data",
-      description: "Core concepts of data engineering, storage architectures, and data manipulation with Python.",
+      title: "Anthropic Academy: Claude 4.6 for Enterprise",
+      description: "Deep dive into the world's most powerful enterprise LLM.",
       topics: [
-        "What is Data Engineering? Roles & Responsibilities",
-        "Data Lakes vs. Data Warehouses: Architecture & Use Cases",
-        "Designing Robust Data Pipelines: ETL vs. ELT",
-        "Introduction to Python for Data Engineering",
-        "Pandas DataFrames: Data Manipulation & Cleaning",
-        "Dask & PySpark: Scaling DataFrames for Big Data",
-        "Data Quality & Validation in Python Pipelines"
+        "Claude 4.5/4.6 Architecture & Performance Benchmarks",
+        "Claude Code Masterclass: Agentic Coding at Scale",
+        "Anthropic Academy Prep: Partner Training Certification",
+        "Prompt Engineering for Claude: XML Tags & Thinking Blocks",
+        "Context Window Optimization: Handling 1M+ Tokens",
+        "Claude for Data Analysis: Integrating with BigQuery ML",
+        "Deploying Claude on Vertex AI & AWS Bedrock"
       ]
     },
     {
       id: 3,
-      title: "Data Ingestion & API Integration",
-      description: "Mastering data collection via REST APIs and cloud-native ingestion patterns.",
+      title: "Google Cloud: Generative AI Leader & Vertex AI",
+      description: "Strategic leadership and technical mastery of GCP's AI stack.",
       topics: [
-        "Introduction to REST API Architecture & HTTP Methods",
-        "Authenticating with APIs: OAuth2, API Keys, & Bearer Tokens",
-        "Working with JSON & XML Data Formats",
-        "Python Requests Library: Fetching Data from External APIs",
-        "Handling Pagination, Rate Limiting, & Retries",
-        "Building Custom Data Ingestors for Cloud Storage",
-        "Serverless Ingestion with Cloud Functions & Cloud Run"
+        "GCP Generative AI Leader Certification Prep (2026 Update)",
+        "Vertex AI Specialist: Model Garden & Custom Training",
+        "BigQuery ML: Running LLMs directly on Petabyte-scale Data",
+        "Gemini 1.5 Pro & Flash: Multimodal Data Pipelines",
+        "Grounding AI with Enterprise Data: Vertex AI Search & Conversation",
+        "Fine-tuning Foundation Models on GCP Infrastructure",
+        "MLOps for GenAI: Versioning, Monitoring, & Scaling"
       ]
     },
     {
       id: 4,
-      title: "Introduction to Google Cloud Platform (GCP)",
-      description: "Getting started with cloud computing and the GCP ecosystem.",
+      title: "Data Engineering Jobs 2026: The AI Architect",
+      description: "Evolving from a Data Engineer to an AI Architect.",
       topics: [
-        "Cloud Computing Overview: Public, Private, & Hybrid Cloud",
-        "Cloud Service Models: IaaS vs. PaaS vs. SaaS",
-        "GCP Global Infrastructure: Regions & Zones",
-        "GCP Resource Hierarchy: Projects, Folders, & Organizations",
-        "GCP Tools & Components: Compute, Storage, & Networking",
-        "Interacting with GCP: Console, gcloud CLI, & SDKs",
-        "Essential gcloud CLI Commands for Data Engineers"
+        "The Rise of the AI Architect: Roles & Responsibilities 2026",
+        "Designing Multi-cloud AI Architectures: GCP, Azure, & AWS",
+        "Azure AI Engineer Associate (AI-102) Integration with GCP",
+        "Building Real-time AI Pipelines with Dataflow & Pub/Sub",
+        "Data Governance in the Age of Agentic AI",
+        "Cost Optimization for Large-scale AI Deployments",
+        "Career Roadmap: Landing High-paying AI Architect Roles"
       ]
     },
     {
       id: 5,
-      title: "Google Cloud Storage (GCS)",
-      description: "Mastering object storage for data lakes and large-scale data management.",
+      title: "Modern Data Stack: BigQuery & Cloud Storage",
+      description: "The foundation of every AI-driven enterprise.",
       topics: [
-        "Introduction to Object Storage & GCS Buckets",
-        "Accessing GCS through the Google Cloud Console",
-        "Managing Data: Uploading, Downloading, & Organizing Files via UI",
-        "Interacting with GCS using Python: Reading & Writing Data Files",
-        "Programmatic File Deletion & Lifecycle Management",
-        "Data Protection: Retention Policies & Object Versioning",
-        "Security & Access Control: IAM vs. ACLs vs. Signed URLs"
-      ]
-    },
-    {
-      id: 6,
-      title: "Google BigQuery: Enterprise Data Warehousing",
-      description: "Mastering petabyte-scale analytics, serverless warehousing, and advanced SQL.",
-      topics: [
-        "BigQuery Architecture: Dremel, Colossus, Jupiter, & Borg",
-        "Resource Hierarchy: Datasets, Tables, Views, & Materialized Views",
-        "Data Ingestion: Batch Loading, Streaming Inserts, & Data Transfer Service",
-        "Querying Data: Standard SQL, Window Functions, & Analytical Patterns",
-        "Performance Optimization: Partitioning & Clustering Strategies",
-        "BigQuery ML: Building Machine Learning Models using SQL",
-        "BigQuery Omni: Multi-cloud Analytics (AWS S3 & Azure Blob)",
-        "BI Engine: Accelerating Dashboards with In-memory Analysis",
-        "Security & Governance: IAM, Authorized Views, & Column-level Security",
-        "Cost Management: On-demand vs. Capacity-based Pricing & Slot Management",
-        "BigQuery Studio: Unified Workspace for Data Engineering & Analytics"
-      ]
-    },
-    {
-      id: 7,
-      title: "Cloud SQL & Cloud Bigtable: Relational & NoSQL Databases",
-      description: "Mastering managed relational databases and high-performance NoSQL storage on GCP.",
-      topics: [
-        "Introduction to Cloud SQL: Managed MySQL, PostgreSQL, & SQL Server",
-        "Cloud SQL Architecture: High Availability, Read Replicas, & Backups",
-        "Connecting to Cloud SQL: Cloud SQL Proxy & Private IP",
-        "Cloud Bigtable: High-Performance, Fully Managed NoSQL Database",
-        "Bigtable Architecture: Nodes, Clusters, & Instances",
-        "Designing Bigtable Schema: Row Keys & Column Families",
-        "Bigtable Performance Tuning & Monitoring",
-        "Choosing the Right Database: Cloud SQL vs. Bigtable vs. Spanner"
-      ]
-    },
-    {
-      id: 8,
-      title: "Cloud Data Fusion: Visual Data Integration",
-      description: "Building and managing code-free data pipelines with a fully managed, cloud-native integration service.",
-      topics: [
-        "Introduction to Cloud Data Fusion: Fully Managed, Cloud-Native Data Integration",
-        "Data Fusion Architecture: CDAP, Hub, and Execution Environments",
-        "Visual Pipeline Design: Sources, Transforms, and Sinks",
-        "Data Wrangling: Interactive Data Preparation and Cleaning",
-        "Integrating with GCS, BigQuery, and Cloud SQL",
-        "Pipeline Scheduling, Monitoring, and Error Handling",
-        "Reusable Pipeline Templates, Macros, and Plugins",
-        "Security: IAM, VPC Service Controls, and Data Encryption"
-      ]
-    },
-    {
-      id: 9,
-      title: "Machine Learning on GCP: Vertex AI & MLOps",
-      description: "Building, deploying, and scaling machine learning models using Google Cloud's unified AI platform.",
-      topics: [
-        "Introduction to AI & Machine Learning on Google Cloud",
-        "Vertex AI: The Unified Platform for the ML Lifecycle",
-        "AutoML: Training High-Quality Models with Minimal Effort",
-        "Custom Training: Using TensorFlow, PyTorch, & Scikit-learn on Vertex AI",
-        "Model Deployment: Serving Predictions with Vertex AI Endpoints",
-        "Vertex AI Feature Store: Managing & Serving ML Features",
-        "MLOps with Vertex AI Pipelines: Orchestrating Workflows",
-        "Pre-trained AI APIs: Vision, Natural Language, & Translation",
-        "Model Monitoring: Detecting Skew & Drift in Production"
-      ]
-    },
-    {
-      id: 10,
-      title: "Job Scheduling, Monitoring, & Troubleshooting",
-      description: "Mastering the orchestration, observability, and maintenance of data pipelines on GCP.",
-      topics: [
-        "Introduction to Cloud Scheduler: Fully Managed Cron Job Service",
-        "Cloud Composer: Orchestrating Workflows with Apache Airflow",
-        "Designing Directed Acyclic Graphs (DAGs) for Data Pipelines",
-        "Monitoring with Cloud Monitoring: Dashboards, Metrics, & Alerts",
-        "Logging with Cloud Logging: Centralized Log Management & Analysis",
-        "Troubleshooting Data Pipelines: Debugging Common Failures",
-        "Error Handling & Retries in Cloud Workflows",
-        "Cost Monitoring & Resource Optimization for Jobs",
-        "Setting up Uptime Checks & Incident Response"
+        "BigQuery Architecture: Dremel & Serverless Analytics",
+        "Designing Scalable Data Lakes with Google Cloud Storage",
+        "Advanced SQL for AI: Window Functions & JSON Processing",
+        "Data Ingestion Patterns: Batch, Streaming, & CDC",
+        "Performance Optimization: Partitioning & Clustering",
+        "BigQuery Omni: Multi-cloud Analytics without Data Movement",
+        "Security & IAM: Protecting the Enterprise Data Asset"
       ]
     }
   ];
@@ -963,16 +1020,91 @@ function MainApp() {
                 <span className="font-bold text-xl tracking-tight">GENAI CHATGPT</span>
               </div>
               <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
-                <a href="#curriculum" className="hover:text-blue-600 transition-colors">TRAINING CONTENT</a>
-                <a href="#features" className="hover:text-blue-600 transition-colors">Features</a>
+                <button 
+                  onClick={() => scrollToTab('curriculum')}
+                  className="hover:text-blue-600 transition-colors cursor-pointer py-2 relative z-10"
+                >
+                  TRAINING CONTENT
+                </button>
+                <button 
+                  onClick={() => scrollToTab('features')}
+                  className="hover:text-blue-600 transition-colors cursor-pointer py-2 relative z-10"
+                >
+                  Features
+                </button>
+                <button 
+                  onClick={() => scrollToSection('about-us')}
+                  className="hover:text-blue-600 transition-colors cursor-pointer py-2 relative z-10"
+                >
+                  About Us
+                </button>
+                <button 
+                  onClick={() => scrollToSection('contact')}
+                  className="hover:text-blue-600 transition-colors cursor-pointer py-2 relative z-10"
+                >
+                  Contact
+                </button>
                 <button 
                   onClick={() => setView('details')}
-                  className="bg-blue-600 text-white px-5 py-2.5 rounded-full hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                  className="bg-blue-600 text-white px-5 py-2.5 rounded-full hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 relative z-10"
                 >
                   Enroll Now
                 </button>
               </div>
+
+              {/* Mobile Menu Button */}
+              <button 
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="md:hidden p-2 text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
             </div>
+
+            {/* Mobile Menu */}
+            <AnimatePresence>
+              {isMenuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="md:hidden bg-white border-t border-gray-50 overflow-hidden"
+                >
+                  <div className="flex flex-col p-6 gap-4">
+                    <button 
+                      onClick={() => { scrollToTab('curriculum'); setIsMenuOpen(false); }}
+                      className="text-left text-gray-600 font-medium hover:text-blue-600 transition-colors py-2 cursor-pointer"
+                    >
+                      TRAINING CONTENT
+                    </button>
+                    <button 
+                      onClick={() => { scrollToTab('features'); setIsMenuOpen(false); }}
+                      className="text-left text-gray-600 font-medium hover:text-blue-600 transition-colors py-2 cursor-pointer"
+                    >
+                      Features
+                    </button>
+                    <button 
+                      onClick={() => { scrollToSection('about-us'); setIsMenuOpen(false); }}
+                      className="text-left text-gray-600 font-medium hover:text-blue-600 transition-colors py-2 cursor-pointer"
+                    >
+                      About Us
+                    </button>
+                    <button 
+                      onClick={() => { scrollToSection('contact'); setIsMenuOpen(false); }}
+                      className="text-left text-gray-600 font-medium hover:text-blue-600 transition-colors py-2 cursor-pointer"
+                    >
+                      Contact
+                    </button>
+                    <button 
+                      onClick={() => { setView('details'); setIsMenuOpen(false); }}
+                      className="bg-blue-600 text-white px-5 py-3 rounded-xl font-bold hover:bg-blue-700 transition-all text-center cursor-pointer"
+                    >
+                      Enroll Now
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </nav>
 
           {/* Hero Section */}
@@ -986,13 +1118,13 @@ function MainApp() {
               >
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wider mb-6">
                   <Zap className="w-3 h-3" />
-                  Professional Certification Path
+                  2026 AI Architect Certification Path
                 </div>
                 <h1 className="text-6xl md:text-7xl font-extrabold tracking-tight leading-[1.1] mb-8">
-                  Master <span className="text-blue-600">Data Engineering</span> & AI Training.
+                  Master <span className="text-blue-600">Agentic AI</span> & Data Engineering.
                 </h1>
                 <p className="text-xl text-gray-600 leading-relaxed mb-10 max-w-2xl">
-                  The ultimate Generative AI learning path. Master AI tools like ChatGPT, Claude, and Google Cloud Platform with our industry-aligned TRAINING CONTENT.
+                  The #1 training for Data Engineering and Agentic AI in Hyderabad. Master Claude 4.6, Vertex AI, and Multi-Agent Systems with 15 years of industry expertise.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4">
                   <button 
@@ -1019,18 +1151,18 @@ function MainApp() {
           </header>
 
           {/* Tab Navigation */}
-          <section className="max-w-7xl mx-auto px-6 mb-12">
+          <section id="tab-section" className="max-w-7xl mx-auto px-6 mb-12 scroll-mt-32">
             <div className="flex justify-center">
               <div className="inline-flex p-1 bg-gray-100 rounded-2xl">
                 <button
                   onClick={() => setActiveTab('features')}
-                  className={`px-8 py-3 rounded-xl font-bold transition-all ${activeTab === 'features' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`px-8 py-3 rounded-xl font-bold transition-all cursor-pointer ${activeTab === 'features' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   GCP Features
                 </button>
                 <button
                   onClick={() => setActiveTab('curriculum')}
-                  className={`px-8 py-3 rounded-xl font-bold transition-all ${activeTab === 'curriculum' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  className={`px-8 py-3 rounded-xl font-bold transition-all cursor-pointer ${activeTab === 'curriculum' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                 >
                   TRAINING CONTENT
                 </button>
@@ -1042,6 +1174,7 @@ function MainApp() {
             {activeTab === 'features' ? (
               <motion.section
                 key="features-tab"
+                id="features"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
@@ -1049,174 +1182,173 @@ function MainApp() {
               >
                 <div className="max-w-7xl mx-auto">
                   <div className="text-center mb-16">
-                    <h2 className="text-4xl font-bold mb-4 tracking-tight">GCP Ecosystem Components</h2>
+                    <h2 className="text-4xl font-bold mb-4 tracking-tight">Mastering Agentic AI Workflows for Data Engineers</h2>
                     <p className="text-gray-600 max-w-2xl mx-auto">
-                      Explore the core building blocks of Google Cloud Platform, including legacy services and their modern successors.
+                      The Best GenAI and GCP Training in Hyderabad, Telangana. Evolve from traditional ETL to autonomous multi-agent systems.
                     </p>
                   </div>
 
                   <div className="space-y-24">
-                    {/* Component Group: Compute */}
+                    {/* Component Group: Agentic Frameworks */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                       <div>
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wider mb-6">
-                          <Cpu className="w-3 h-3" /> Compute & Serverless
+                          <Cpu className="w-3 h-3" /> Agentic Frameworks
                         </div>
-                        <h3 className="text-3xl font-bold mb-6">Scalable Compute Infrastructure</h3>
+                        <h3 className="text-3xl font-bold mb-6">Cloud Architect Training: Designing Multi-Agent Systems</h3>
                         <div className="space-y-8">
                           <div className="p-6 rounded-3xl bg-white border border-gray-100 shadow-sm">
                             <div className="flex items-center gap-4 mb-4">
-                              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold">CR</div>
+                              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-bold">LG</div>
                               <div>
-                                <h4 className="font-bold text-lg">Cloud Run (v2)</h4>
-                                <span className="text-xs text-green-600 font-bold uppercase">Modern Standard</span>
+                                <h4 className="font-bold text-lg">LangGraph & CrewAI</h4>
+                                <span className="text-xs text-green-600 font-bold uppercase">2026 Industry Standard</span>
                               </div>
                             </div>
                             <p className="text-gray-600 text-sm mb-4">
-                              Fully managed environment for running containerized applications. Successor to App Engine for many use cases.
+                              Build stateful, multi-actor applications with cycles. The primary framework for complex agentic reasoning in production.
                             </p>
                             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                              <span className="text-xs font-bold text-gray-400 uppercase block mb-1">Real-time Usage</span>
-                              <p className="text-sm text-gray-700 italic">"Deploying a microservices-based e-commerce backend that scales to zero when no traffic is present, saving 70% in costs."</p>
+                              <span className="text-xs font-bold text-gray-400 uppercase block mb-1">Enterprise Use Case</span>
+                              <p className="text-sm text-gray-700 italic">"Orchestrating a fleet of agents to automate end-to-end data quality auditing and self-healing pipelines."</p>
                             </div>
                           </div>
 
                           <div className="p-6 rounded-3xl bg-gray-50 border border-dashed border-gray-200 opacity-75">
                             <div className="flex items-center gap-4 mb-4">
-                              <div className="w-10 h-10 bg-gray-400 rounded-xl flex items-center justify-center text-white font-bold">CF</div>
+                              <div className="w-10 h-10 bg-gray-400 rounded-xl flex items-center justify-center text-white font-bold">AG</div>
                               <div>
-                                <h4 className="font-bold text-lg">Cloud Functions (v1)</h4>
-                                <span className="text-xs text-orange-600 font-bold uppercase">Retired/Legacy</span>
+                                <h4 className="font-bold text-lg">Microsoft AutoGen</h4>
+                                <span className="text-xs text-blue-600 font-bold uppercase">Multi-Cloud Ready</span>
                               </div>
                             </div>
                             <p className="text-gray-600 text-sm">
-                              The original serverless execution environment. Now superseded by Cloud Functions (2nd gen) built on Cloud Run.
+                              Enabling multi-agent conversations to solve complex tasks. Seamlessly integrates with Azure AI and GCP Vertex AI.
                             </p>
                           </div>
                         </div>
                       </div>
                       <div className="relative">
                         <img 
-                          src="https://picsum.photos/seed/compute/800/600" 
-                          alt="Compute Architecture" 
+                          src="https://picsum.photos/seed/agents/800/600" 
+                          alt="Multi-Agent System Architecture" 
                           className="rounded-[2rem] shadow-2xl"
                           referrerPolicy="no-referrer"
                         />
-                        {/* Mock Architecture Diagram Overlay */}
                         <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-3xl shadow-xl border border-gray-100 max-w-xs hidden md:block">
                           <h5 className="font-bold text-sm mb-3 flex items-center gap-2">
-                            <Layers className="w-4 h-4 text-blue-600" /> Serverless Flow
+                            <Layers className="w-4 h-4 text-blue-600" /> Agentic Flow
                           </h5>
                           <div className="space-y-2">
                             <div className="h-2 w-full bg-blue-100 rounded-full overflow-hidden">
-                              <div className="h-full w-3/4 bg-blue-600" />
+                              <div className="h-full w-full bg-blue-600" />
                             </div>
                             <div className="flex justify-between text-[10px] font-bold text-gray-400">
-                              <span>REQUEST</span>
-                              <span>AUTO-SCALE</span>
+                              <span>REASONING</span>
+                              <span>ACTION</span>
                             </div>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Component Group: Data & Storage */}
+                    {/* Component Group: Connectivity & Data */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                       <div className="order-2 lg:order-1 relative">
                         <img 
-                          src="https://picsum.photos/seed/data/800/600" 
-                          alt="Data Warehousing" 
+                          src="https://picsum.photos/seed/mcp/800/600" 
+                          alt="Model Context Protocol" 
                           className="rounded-[2rem] shadow-2xl"
                           referrerPolicy="no-referrer"
                         />
                         <div className="absolute -top-6 -right-6 bg-blue-600 p-6 rounded-3xl shadow-xl text-white max-w-xs hidden md:block">
                           <Database className="w-8 h-8 mb-4" />
-                          <p className="font-bold text-lg">BigQuery ML</p>
-                          <p className="text-sm text-blue-100">Train models directly in your warehouse using SQL.</p>
+                          <p className="font-bold text-lg">MCP Servers</p>
+                          <p className="text-sm text-blue-100">The new standard for connecting AI to your enterprise data sources.</p>
                         </div>
                       </div>
                       <div className="order-1 lg:order-2">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold uppercase tracking-wider mb-6">
-                          <Database className="w-3 h-3" /> Storage & Analytics
+                          <Database className="w-3 h-3" /> Connectivity & Vector Data
                         </div>
-                        <h3 className="text-3xl font-bold mb-6">The Modern Data Stack</h3>
+                        <h3 className="text-3xl font-bold mb-6">Anthropic Academy Prep: Claude 4.6 for Enterprise</h3>
                         <div className="space-y-8">
                           <div className="p-6 rounded-3xl bg-white border border-gray-100 shadow-sm">
                             <div className="flex items-center gap-4 mb-4">
-                              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold">BQ</div>
+                              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold">VC</div>
                               <div>
-                                <h4 className="font-bold text-lg">BigQuery (Omni)</h4>
-                                <span className="text-xs text-green-600 font-bold uppercase">New Generation</span>
+                                <h4 className="font-bold text-lg">Pinecone & Weaviate</h4>
+                                <span className="text-xs text-green-600 font-bold uppercase">Long-term Memory</span>
                               </div>
                             </div>
                             <p className="text-gray-600 text-sm mb-4">
-                              Multi-cloud data warehouse that allows you to analyze data across GCP, AWS, and Azure without moving it.
+                              High-performance vector databases for RAG and agentic memory. Essential for building context-aware AI systems.
                             </p>
                             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                              <span className="text-xs font-bold text-gray-400 uppercase block mb-1">Real-time Usage</span>
-                              <p className="text-sm text-gray-700 italic">"Running federated queries on S3 data from a GCP console to generate a unified global sales report."</p>
+                              <span className="text-xs font-bold text-gray-400 uppercase block mb-1">Technical Edge</span>
+                              <p className="text-sm text-gray-700 italic">"Implementing sub-second semantic search across billions of document embeddings for real-time AI grounding."</p>
                             </div>
                           </div>
 
                           <div className="p-6 rounded-3xl bg-gray-50 border border-dashed border-gray-200 opacity-75">
                             <div className="flex items-center gap-4 mb-4">
-                              <div className="w-10 h-10 bg-gray-400 rounded-xl flex items-center justify-center text-white font-bold">SQL</div>
+                              <div className="w-10 h-10 bg-gray-400 rounded-xl flex items-center justify-center text-white font-bold">BQ</div>
                               <div>
-                                <h4 className="font-bold text-lg">Cloud SQL (First Gen)</h4>
-                                <span className="text-xs text-orange-600 font-bold uppercase">Retired</span>
+                                <h4 className="font-bold text-lg">BigQuery ML (2026)</h4>
+                                <span className="text-xs text-orange-600 font-bold uppercase">Serverless AI</span>
                               </div>
                             </div>
                             <p className="text-gray-600 text-sm">
-                              The original managed MySQL service. Now replaced by Second Gen instances with significantly better performance and availability.
+                              Directly invoke Claude 4.6 and Gemini 1.5 Pro within BigQuery using SQL. No data movement required.
                             </p>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Component Group: AI & Operations */}
+                    {/* Component Group: Coding & Tools */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
                       <div>
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-xs font-bold uppercase tracking-wider mb-6">
-                          <BrainCircuit className="w-3 h-3" /> AI & Operations
+                          <BrainCircuit className="w-3 h-3" /> Agentic Coding Tools
                         </div>
-                        <h3 className="text-3xl font-bold mb-6">Intelligent Monitoring</h3>
+                        <h3 className="text-3xl font-bold mb-6">Data Engineering Jobs 2026: The Rise of the AI Architect</h3>
                         <div className="space-y-8">
                           <div className="p-6 rounded-3xl bg-white border border-gray-100 shadow-sm">
                             <div className="flex items-center gap-4 mb-4">
-                              <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center text-white font-bold">MO</div>
+                              <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center text-white font-bold">CC</div>
                               <div>
-                                <h4 className="font-bold text-lg">Cloud Monitoring</h4>
-                                <span className="text-xs text-green-600 font-bold uppercase">Current Version</span>
+                                <h4 className="font-bold text-lg">Claude Code (Agentic CLI)</h4>
+                                <span className="text-xs text-green-600 font-bold uppercase">Next-Gen DevEx</span>
                               </div>
                             </div>
                             <p className="text-gray-600 text-sm mb-4">
-                              Full-stack observability for your infrastructure and applications. Integrated with Vertex AI for anomaly detection.
+                              The first agentic CLI that can write, test, and deploy code autonomously. A must-have for modern Data Engineers.
                             </p>
                             <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                              <span className="text-xs font-bold text-gray-400 uppercase block mb-1">Real-time Usage</span>
-                              <p className="text-sm text-gray-700 italic">"Setting up automated alerts for high latency in a GKE cluster and using AI-driven insights to find the root cause."</p>
+                              <span className="text-xs font-bold text-gray-400 uppercase block mb-1">Productivity Boost</span>
+                              <p className="text-sm text-gray-700 italic">"Automating the migration of legacy SQL scripts to optimized BigQuery ML models using Claude Code."</p>
                             </div>
                           </div>
 
                           <div className="p-6 rounded-3xl bg-gray-50 border border-dashed border-gray-200 opacity-75">
                             <div className="flex items-center gap-4 mb-4">
-                              <div className="w-10 h-10 bg-gray-400 rounded-xl flex items-center justify-center text-white font-bold">SD</div>
+                              <div className="w-10 h-10 bg-gray-400 rounded-xl flex items-center justify-center text-white font-bold">GS</div>
                               <div>
-                                <h4 className="font-bold text-lg">Stackdriver</h4>
-                                <span className="text-xs text-orange-600 font-bold uppercase">Retired Branding</span>
+                                <h4 className="font-bold text-lg">Gemini AI Studio Pro</h4>
+                                <span className="text-xs text-blue-600 font-bold uppercase">GCP Native</span>
                               </div>
                             </div>
                             <p className="text-gray-600 text-sm">
-                              The original monitoring tool acquired by Google. Now fully rebranded and integrated as Google Cloud Operations Suite.
+                              Rapidly prototype and deploy multimodal AI applications with Google's most capable models.
                             </p>
                           </div>
                         </div>
                       </div>
                       <div className="relative">
                         <img 
-                          src="https://picsum.photos/seed/ai/800/600" 
-                          alt="AI Operations" 
+                          src="https://picsum.photos/seed/coding/800/600" 
+                          alt="Agentic Coding" 
                           className="rounded-[2rem] shadow-2xl"
                           referrerPolicy="no-referrer"
                         />
@@ -1358,6 +1490,154 @@ function MainApp() {
             )}
           </AnimatePresence>
 
+          {/* Glossary Section */}
+          <section className="py-24 px-6 bg-white">
+            <div className="max-w-7xl mx-auto">
+              <div className="text-center mb-16">
+                <h2 className="text-4xl font-bold mb-4 tracking-tight">Glossary of AI Terms 2026</h2>
+                <p className="text-gray-600 max-w-2xl mx-auto">Stay ahead of the curve with the essential terminology for the AI Architect era.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {[
+                  { term: "Agentic Workflow", definition: "A design pattern where AI models are given tools and autonomy to complete complex, multi-step tasks without constant human prompting." },
+                  { term: "MCP (Model Context Protocol)", definition: "An open standard that allows AI models to securely and consistently access data from any source (DBs, APIs, Files)." },
+                  { term: "Multi-Agent System (MAS)", definition: "An architecture where multiple specialized AI agents collaborate, often with a 'Manager' agent orchestrating the workflow." },
+                  { term: "RAG (Retrieval-Augmented Generation)", definition: "Enhancing LLM responses by retrieving relevant information from private enterprise data sources before generation." },
+                  { term: "Vector Database", definition: "A specialized database designed to store and search high-dimensional data (embeddings), enabling semantic search for AI." },
+                  { term: "Grounding", definition: "The process of linking AI model responses to verifiable, real-world data sources to reduce hallucinations." }
+                ].map((item, idx) => (
+                  <div key={idx} className="p-8 rounded-3xl bg-gray-50 border border-gray-100 hover:border-blue-200 transition-all group">
+                    <h4 className="font-bold text-xl mb-3 text-gray-900 group-hover:text-blue-600 transition-colors">{item.term}</h4>
+                    <p className="text-gray-600 text-sm leading-relaxed">{item.definition}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Local Tech Hub Signal */}
+          <section className="py-12 px-6 bg-blue-50 border-y border-blue-100">
+            <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white">
+                  <MapPin className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-xl">The Best GenAI and GCP Training in Hyderabad, Telangana</h3>
+                  <p className="text-blue-600 font-medium">Empowering the HITEC City tech community with 2026-ready skills.</p>
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <div className="px-4 py-2 bg-white rounded-lg border border-blue-100 text-sm font-bold text-blue-800">#1 in Hyderabad</div>
+                <div className="px-4 py-2 bg-white rounded-lg border border-blue-100 text-sm font-bold text-blue-800">15+ Yrs Experience</div>
+              </div>
+            </div>
+          </section>
+
+      {/* About Us Section */}
+      <section id="about-us" className="py-24 px-6 bg-white relative overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="relative"
+            >
+              <div className="relative z-10 rounded-[3rem] overflow-hidden shadow-2xl">
+                <img 
+                  src="https://picsum.photos/seed/instructor/800/1000" 
+                  alt="Ajay Kumar - AI & Big Data Architect" 
+                  className="w-full h-auto object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              {/* Decorative elements */}
+              <div className="absolute -bottom-10 -right-10 w-64 h-64 bg-blue-100 rounded-full blur-3xl -z-10" />
+              <div className="absolute -top-10 -left-10 w-48 h-48 bg-indigo-100 rounded-full blur-3xl -z-10" />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="space-y-8"
+            >
+              <div>
+                <h3 className="text-blue-600 font-bold tracking-widest uppercase text-sm mb-4">Architecting the Future</h3>
+                <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900 leading-tight">
+                  Meet Ajay Kumar: <br />
+                  <span className="text-gray-500">15 Years of Engineering Excellence</span>
+                </h2>
+              </div>
+
+              <div className="space-y-6 text-gray-600 leading-relaxed text-lg">
+                <p>
+                  With over a decade and a half of specialized experience in <span className="text-gray-900 font-semibold">Big Data Architectures, Machine Learning, and Artificial Intelligence</span>, Ajay Kumar has been at the forefront of the technological shift toward autonomous systems.
+                </p>
+                <p>
+                  His pedagogical approach is strictly <span className="text-gray-900 font-semibold">production-oriented</span>, mirroring the day-to-day operational lifecycle of a senior developer. Every module is designed to bridge the gap between theoretical frameworks and enterprise-grade implementation.
+                </p>
+                <p>
+                  Ajay's mentorship has empowered a global cohort of engineers who now occupy <span className="text-gray-900 font-semibold">strategic leadership positions</span> across the IT landscape. He offers versatile engagement models, including high-impact <span className="text-gray-900 font-semibold">B2B and B2C training</span>, tailored for both individualized one-to-one deep dives and collaborative team-based upskilling.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6 pt-4">
+                <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                  <div className="text-3xl font-bold text-blue-600 mb-1">15+</div>
+                  <div className="text-sm text-gray-500 font-medium">Years Experience</div>
+                </div>
+                <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                  <div className="text-3xl font-bold text-blue-600 mb-1">5k+</div>
+                  <div className="text-sm text-gray-500 font-medium">Global Alumni</div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section id="contact" className="py-24 px-6 bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+            <div>
+              <h3 className="text-blue-600 font-bold tracking-widest uppercase text-sm mb-4">Get In Touch</h3>
+              <h2 className="text-4xl font-bold tracking-tight text-gray-900 mb-8">Let's Discuss Your <br /><span className="text-blue-600">AI & Data Strategy</span></h2>
+              <p className="text-gray-600 text-lg mb-12 leading-relaxed">
+                Whether you're looking for individualized mentorship or enterprise-scale team training, we're here to help you navigate the complex landscape of Agentic AI and Big Data.
+              </p>
+              
+              <div className="space-y-8">
+                <div className="flex items-start gap-6">
+                  <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-blue-600 flex-shrink-0">
+                    <Mail className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900 mb-1">Email Us</h4>
+                    <p className="text-gray-500">ajay.ai.spoc@gmail.com</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-6">
+                  <div className="w-12 h-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-blue-600 flex-shrink-0">
+                    <Globe className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900 mb-1">Global Training</h4>
+                    <p className="text-gray-500">Available for B2B & B2C worldwide</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-xl shadow-gray-200/50 border border-gray-100">
+              <ContactForm />
+            </div>
+          </div>
+        </div>
+      </section>
+
           {/* CTA Section */}
       <section className="py-32 px-6">
         <div className="max-w-7xl mx-auto">
@@ -1410,7 +1690,14 @@ function MainApp() {
             <div>
               <h4 className="font-bold mb-6">Course</h4>
               <ul className="space-y-4 text-gray-500 text-sm">
-                <li><a href="#curriculum" className="hover:text-blue-600 transition-colors">TRAINING CONTENT</a></li>
+                <li>
+                  <button 
+                    onClick={() => scrollToTab('curriculum')}
+                    className="hover:text-blue-600 transition-colors cursor-pointer"
+                  >
+                    TRAINING CONTENT
+                  </button>
+                </li>
                 <li><a href="#" className="hover:text-blue-600 transition-colors">Pricing</a></li>
                 <li><a href="#" className="hover:text-blue-600 transition-colors">Success Stories</a></li>
                 <li><a href="#" className="hover:text-blue-600 transition-colors">FAQ</a></li>
@@ -1419,8 +1706,22 @@ function MainApp() {
             <div>
               <h4 className="font-bold mb-6">Company</h4>
               <ul className="space-y-4 text-gray-500 text-sm">
-                <li><a href="#" className="hover:text-blue-600 transition-colors">About Us</a></li>
-                <li><a href="#" className="hover:text-blue-600 transition-colors">Contact</a></li>
+                <li>
+                  <button 
+                    onClick={() => scrollToSection('about-us')}
+                    className="hover:text-blue-600 transition-colors cursor-pointer"
+                  >
+                    About Us
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => scrollToSection('contact')}
+                    className="hover:text-blue-600 transition-colors cursor-pointer"
+                  >
+                    Contact
+                  </button>
+                </li>
                 <li><a href="#" className="hover:text-blue-600 transition-colors">Privacy Policy</a></li>
                 <li><a href="#" className="hover:text-blue-600 transition-colors">Terms of Service</a></li>
               </ul>

@@ -106,16 +106,37 @@ async function startServer() {
 
       // 2. Try Webhook if configured (e.g. Google Apps Script, Zapier, Formspree)
       if (process.env.WEBHOOK_URL) {
-        await fetch(process.env.WEBHOOK_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: "ajay.ai.spoc@gmail.com",
-            subject: `New Enrollment Request: ${name}`,
-            ...req.body
-          })
-        });
-        return res.status(200).json({ success: true, message: "Notification sent via Webhook." });
+        try {
+          console.log("Calling webhook:", process.env.WEBHOOK_URL);
+          
+          // Using fetch for better redirect handling with Google Apps Script
+          const response = await fetch(process.env.WEBHOOK_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              to: "ajay.ai.spoc@gmail.com",
+              subject: `New Enrollment Request: ${name}`,
+              ...req.body,
+              timestamp: new Date().toISOString()
+            }),
+          });
+          
+          console.log("Webhook response status:", response.status);
+          const responseText = await response.text();
+          console.log("Webhook response text:", responseText);
+
+          if (!response.ok && response.status !== 302) {
+            throw new Error(`Webhook failed with status ${response.status}: ${responseText}`);
+          }
+
+          return res.status(200).json({ success: true, message: "Notification sent via Webhook." });
+        } catch (webhookErr: any) {
+          console.error("Webhook call failed:", webhookErr.message);
+          // Re-throw to be caught by the outer catch
+          throw webhookErr;
+        }
       }
 
       // 3. Fallback: Log to console
@@ -138,6 +159,88 @@ async function startServer() {
     }
   });
 
+  // API Route for Contact Form
+  app.post("/api/contact", async (req, res) => {
+    const { name, phone, description } = req.body;
+
+    if (!name || !phone || !description) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || '"GenAI ChatGPT" <noreply@genaichatgpt.com>',
+      to: "ajay.ai.spoc@gmail.com",
+      subject: `New Contact Inquiry: ${name}`,
+      text: `
+        New Contact Inquiry:
+        -----------------------
+        Name: ${name}
+        Phone: ${phone}
+        Requirement: ${description}
+      `,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+          <h2 style="color: #2563eb;">New Contact Inquiry</h2>
+          <p>You have received a new inquiry from your website contact form.</p>
+          <hr style="border: 0; border-top: 1px solid #eee;" />
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 10px 0; font-weight: bold; width: 150px;">Name:</td>
+              <td style="padding: 10px 0;">${name}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; font-weight: bold;">Phone:</td>
+              <td style="padding: 10px 0;">${phone}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0; font-weight: bold; vertical-align: top;">Requirement:</td>
+              <td style="padding: 10px 0;">${description}</td>
+            </tr>
+          </table>
+          <hr style="border: 0; border-top: 1px solid #eee;" />
+          <p style="font-size: 12px; color: #666;">This email was sent automatically from genaichatgpt.com</p>
+        </div>
+      `,
+    };
+
+    try {
+      // 1. Try SMTP
+      if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST,
+          port: parseInt(process.env.SMTP_PORT || "587"),
+          secure: process.env.SMTP_SECURE === "true",
+          auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+        });
+        await transporter.sendMail(mailOptions);
+        return res.status(200).json({ success: true, message: "Inquiry sent via SMTP." });
+      }
+
+      // 2. Try Webhook
+      if (process.env.WEBHOOK_URL) {
+        const response = await fetch(process.env.WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: "ajay.ai.spoc@gmail.com",
+            subject: `New Contact Inquiry: ${name}`,
+            ...req.body,
+            timestamp: new Date().toISOString()
+          }),
+        });
+        if (!response.ok && response.status !== 302) {
+          throw new Error(`Webhook failed with status ${response.status}`);
+        }
+        return res.status(200).json({ success: true, message: "Inquiry sent via Webhook." });
+      }
+
+      res.status(200).json({ success: true, message: "Inquiry received (logged to console)." });
+    } catch (error) {
+      console.error("Error sending contact email:", error);
+      res.status(200).json({ success: true, message: "Inquiry received, but email notification failed." });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -155,6 +258,7 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    console.log("WEBHOOK_URL loaded:", process.env.WEBHOOK_URL ? "Yes" : "No");
   });
 }
 
