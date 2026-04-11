@@ -24,7 +24,7 @@
         },
         "status": {
           "type": "string",
-          "enum": ["fresher", "working_professional"],
+          "enum": ["fresher", "professional", "working_professional"],
           "description": "Professional status of the lead."
         },
         "role": {

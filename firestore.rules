@@ -42,20 +42,14 @@ service cloud.firestore {
     }
 
     function isValidLead(data) {
-      let allowedFields = ['name', 'email', 'phone', 'city', 'status', 'role', 'experience', 'jobRole', 'createdAt'];
       let requiredFields = ['name', 'email', 'phone', 'status', 'createdAt'];
       
       return data.keys().hasAll(requiredFields) &&
-        data.keys().hasOnly(allowedFields) &&
-        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
-        isValidEmail(data.email) &&
-        data.phone is string && data.phone.size() >= 10 && data.phone.size() <= 20 &&
-        (data.status == 'fresher' || data.status == 'professional') &&
-        (!('city' in data) || (data.city is string && data.city.size() <= 100)) &&
-        (!('role' in data) || (data.role is string && data.role.size() <= 100)) &&
-        (!('experience' in data) || (data.experience is string || data.experience is number)) &&
-        (!('jobRole' in data) || (data.jobRole is string && data.jobRole.size() <= 100)) &&
-        data.createdAt == request.time;
+        data.name is string && data.name.size() > 0 &&
+        data.email is string && data.email.size() > 0 &&
+        data.phone is string && data.phone.size() > 0 &&
+        data.status is string &&
+        data.createdAt is timestamp;
     }
 
     // ===============================================================
