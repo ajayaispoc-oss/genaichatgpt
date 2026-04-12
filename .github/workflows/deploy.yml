@@ -1,0 +1,4 @@
+- name: Build
+  run: npm run build
+  env:
+    VITE_WEBHOOK_URL: ${{ secrets.VITE_WEBHOOK_URL }}
