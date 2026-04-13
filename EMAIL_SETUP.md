@@ -44,12 +44,12 @@ No backend server or Firebase Functions needed! ✨
 
 Your webhook URL is:
 ```
-https://script.google.com/macros/s/AKfycbwltDYnepV5mAZ_1Rc7gL6cp7iLa7WAgOQgLH-O32DcpUCp5jf9kVgkQrrsSjoLdySjqA/exec
+https://script.google.com/macros/s/AKfycby0MWfQhsfQb5c6MM3kNTa4BAcTWXHBEe8k4rhFAhntA7xuPIT-EDczmcNAI_MamtBX1g/exec
 ```
 
 **Test it:**
 ```bash
-curl -X POST "https://script.google.com/macros/s/AKfycbwltDYnepV5mAZ_1Rc7gL6cp7iLa7WAgOQgLH-O32DcpUCp5jf9kVgkQrrsSjoLdySjqA/exec" \
+curl -X POST "https://script.google.com/macros/s/AKfycby0MWfQhsfQb5c6MM3kNTa4BAcTWXHBEe8k4rhFAhntA7xuPIT-EDczmcNAI_MamtBX1g/exec" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Test User",
@@ -70,7 +70,7 @@ Add this secret to your GitHub repository:
 
 **Add secret:**
 - Name: `VITE_WEBHOOK_URL`
-- Value: `https://script.google.com/macros/s/AKfycbwltDYnepV5mAZ_1Rc7gL6cp7iLa7WAgOQgLH-O32DcpUCp5jf9kVgkQrrsSjoLdySjqA/exec`
+- Value: `https://script.google.com/macros/s/AKfycby0MWfQhsfQb5c6MM3kNTa4BAcTWXHBEe8k4rhFAhntA7xuPIT-EDczmcNAI_MamtBX1g/exec`
 
 ### 3. Deploy
 
@@ -181,7 +181,7 @@ Requirement: Need help with GenAI training
 
 For local testing, create `.env` file:
 ```bash
-VITE_WEBHOOK_URL=https://script.google.com/macros/s/AKfycbwltDYnepV5mAZ_1Rc7gL6cp7iLa7WAgOQgLH-O32DcpUCp5jf9kVgkQrrsSjoLdySjqA/exec
+VITE_WEBHOOK_URL=https://script.google.com/macros/s/AKfycby0MWfQhsfQb5c6MM3kNTa4BAcTWXHBEe8k4rhFAhntA7xuPIT-EDczmcNAI_MamtBX1g/exec
 ```
 
 Then run:
