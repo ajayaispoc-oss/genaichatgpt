@@ -223,33 +223,32 @@ function ContactForm() {
       console.warn(`Local API ${endpoint} not available (expected on static hosting like GitHub Pages). Trying fallback...`);
     }
 
-    // 2. Fallback: Try direct Webhook (works on static sites like GitHub Pages)
-    // IMPORTANT: You must set VITE_WEBHOOK_URL in your GitHub Actions secrets and expose it in the workflow
+    // 2. Fallback: Try direct Webhook (works on static sites like GitHub Pages/Firebase)
+    // Uses text/plain content-type to avoid CORS preflight with Google Apps Script
     const webhookUrl = (import.meta as any).env.VITE_WEBHOOK_URL;
-    
+
     if (webhookUrl) {
       try {
-        const response = await fetch(webhookUrl, {
+        await fetch(webhookUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify({
             ...data,
             _subject: type === 'enroll' ? `New Enrollment: ${data.name}` : `New Inquiry: ${data.name}`,
             _source: 'frontend_static_fallback',
             _timestamp: new Date().toISOString()
           }),
+          mode: 'no-cors',
         });
-        if (response.ok || response.status === 302) {
-          console.log("Notification sent successfully via direct webhook fallback.");
-          return true;
-        }
-        console.error(`Webhook fallback failed with status: ${response.status}`);
+        // no-cors mode returns opaque response (status 0), but the request goes through
+        console.log("Notification sent via webhook (no-cors mode).");
+        return true;
       } catch (err) {
         console.error("Direct webhook fallback failed:", err);
       }
     } else {
       console.error("NOTIFICATION ERROR: VITE_WEBHOOK_URL is not defined.");
-      console.info("To fix this on GitHub Pages: Add VITE_WEBHOOK_URL to your GitHub Repository Secrets and update your workflow to include it during build.");
+      console.info("To fix this on Firebase Hosting: Add VITE_WEBHOOK_URL to your GitHub Repository Secrets.");
     }
     return false;
   };
@@ -383,21 +382,24 @@ function DetailsPage({ onBack }: { onBack: () => void, key?: string }) {
       console.warn("Local API not available, trying fallback...");
     }
 
-    // 2. Fallback: Direct Webhook (works on GitHub Pages)
+    // 2. Fallback: Direct Webhook (works on Firebase Hosting)
+    // Uses text/plain content-type to avoid CORS preflight with Google Apps Script
     const webhookUrl = (import.meta as any).env.VITE_WEBHOOK_URL;
     if (webhookUrl) {
       try {
-        const response = await fetch(webhookUrl, {
+        await fetch(webhookUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify({
             ...data,
             _subject: `New Enrollment: ${data.name}`,
             _source: 'enroll_static_fallback',
             _timestamp: new Date().toISOString()
           }),
+          mode: 'no-cors',
         });
-        return response.ok || response.status === 302;
+        // no-cors returns opaque response, but request goes through
+        return true;
       } catch (err) {
         console.error("Webhook fallback failed:", err);
       }
