@@ -207,7 +207,7 @@ function ContactForm() {
 
   const sendNotification = async (data: any, type: 'enroll' | 'contact') => {
     const endpoint = type === 'enroll' ? '/api/enroll' : '/api/contact';
-    
+
     // 1. Try the local API (works in AI Studio and Cloud Run)
     try {
       const response = await fetch(endpoint, {
@@ -220,35 +220,31 @@ function ContactForm() {
         return true;
       }
     } catch (err) {
-      console.warn(`Local API ${endpoint} not available (expected on static hosting like GitHub Pages). Trying fallback...`);
+      console.warn(`Local API ${endpoint} not available. Trying webhook...`);
     }
 
-    // 2. Fallback: Try direct Webhook (works on static sites like GitHub Pages/Firebase)
-    // Uses text/plain content-type to avoid CORS preflight with Google Apps Script
+    // 2. Fallback: GET request to Google Apps Script (avoids all CORS issues)
     const webhookUrl = (import.meta as any).env.VITE_WEBHOOK_URL;
 
     if (webhookUrl) {
       try {
-        await fetch(webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({
-            ...data,
-            _subject: type === 'enroll' ? `New Enrollment: ${data.name}` : `New Inquiry: ${data.name}`,
-            _source: 'frontend_static_fallback',
-            _timestamp: new Date().toISOString()
-          }),
-          mode: 'no-cors',
+        const params = new URLSearchParams({
+          ...Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v ?? '')])),
+          _subject: type === 'enroll' ? `New Enrollment: ${data.name}` : `New Inquiry: ${data.name}`,
+          _type: type,
         });
-        // no-cors mode returns opaque response (status 0), but the request goes through
-        console.log("Notification sent via webhook (no-cors mode).");
-        return true;
+        const response = await fetch(`${webhookUrl}?${params.toString()}`);
+        const result = await response.json();
+        if (result.status === 'success') {
+          console.log("Notification sent via webhook.");
+          return true;
+        }
+        console.error("Webhook returned error:", result.message);
       } catch (err) {
-        console.error("Direct webhook fallback failed:", err);
+        console.error("Webhook failed:", err);
       }
     } else {
-      console.error("NOTIFICATION ERROR: VITE_WEBHOOK_URL is not defined.");
-      console.info("To fix this on Firebase Hosting: Add VITE_WEBHOOK_URL to your GitHub Repository Secrets.");
+      console.error("VITE_WEBHOOK_URL is not defined. Add it to GitHub Repository Secrets.");
     }
     return false;
   };
@@ -382,24 +378,18 @@ function DetailsPage({ onBack }: { onBack: () => void, key?: string }) {
       console.warn("Local API not available, trying fallback...");
     }
 
-    // 2. Fallback: Direct Webhook (works on Firebase Hosting)
-    // Uses text/plain content-type to avoid CORS preflight with Google Apps Script
+    // 2. Fallback: GET request to Google Apps Script (avoids all CORS issues)
     const webhookUrl = (import.meta as any).env.VITE_WEBHOOK_URL;
     if (webhookUrl) {
       try {
-        await fetch(webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({
-            ...data,
-            _subject: `New Enrollment: ${data.name}`,
-            _source: 'enroll_static_fallback',
-            _timestamp: new Date().toISOString()
-          }),
-          mode: 'no-cors',
+        const params = new URLSearchParams({
+          ...Object.fromEntries(Object.entries(data).map(([k, v]) => [k, String(v ?? '')])),
+          _subject: `New Enrollment: ${data.name}`,
+          _type: 'enroll',
         });
-        // no-cors returns opaque response, but request goes through
-        return true;
+        const response = await fetch(`${webhookUrl}?${params.toString()}`);
+        const result = await response.json();
+        return result.status === 'success';
       } catch (err) {
         console.error("Webhook fallback failed:", err);
       }

@@ -15,11 +15,73 @@
  */
 
 function doGet(e) {
+  // If parameters are passed, send an email notification
+  if (e.parameter && e.parameter.name) {
+    try {
+      const name = e.parameter.name || 'Unknown';
+      const email = e.parameter.email || '';
+      const phone = e.parameter.phone || '';
+      const city = e.parameter.city || '';
+      const status = e.parameter.status || '';
+      const experience = e.parameter.experience || '';
+      const jobRole = e.parameter.jobRole || '';
+      const description = e.parameter.description || '';
+      const type = e.parameter._type || 'contact';
+      const subject = e.parameter._subject || `New Submission from ${name}`;
+
+      let htmlBody = '';
+      let textBody = '';
+
+      if (type === 'enroll') {
+        htmlBody = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+            <h2 style="color: #2563eb;">New Enrollment Request</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 8px 0; font-weight: bold; width: 150px;">Name:</td><td>${name}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold;">Email:</td><td><a href="mailto:${email}">${email}</a></td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold;">Phone:</td><td>${phone}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold;">City:</td><td>${city || 'N/A'}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold;">Status:</td><td>${status}</td></tr>
+              ${status === 'professional' ? `<tr><td style="padding: 8px 0; font-weight: bold;">Experience:</td><td>${experience} Years</td></tr><tr><td style="padding: 8px 0; font-weight: bold;">Current Role:</td><td>${jobRole}</td></tr>` : ''}
+            </table>
+            <p style="font-size: 12px; color: #666; margin-top: 20px;">Sent from genaichatgpt.com</p>
+          </div>`;
+        textBody = `New Enrollment Request\nName: ${name}\nEmail: ${email}\nPhone: ${phone}\nCity: ${city || 'N/A'}\nStatus: ${status}\n${status === 'professional' ? `Experience: ${experience} Years\nCurrent Role: ${jobRole}\n` : ''}`;
+      } else {
+        htmlBody = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+            <h2 style="color: #2563eb;">New Contact Inquiry</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 8px 0; font-weight: bold; width: 150px;">Name:</td><td>${name}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold;">Phone:</td><td>${phone}</td></tr>
+              <tr><td style="padding: 8px 0; font-weight: bold; vertical-align: top;">Requirement:</td><td>${description}</td></tr>
+            </table>
+            <p style="font-size: 12px; color: #666; margin-top: 20px;">Sent from genaichatgpt.com</p>
+          </div>`;
+        textBody = `New Contact Inquiry\nName: ${name}\nPhone: ${phone}\nRequirement: ${description}`;
+      }
+
+      MailApp.sendEmail({
+        to: 'ajay.ai.spoc@gmail.com',
+        subject: subject,
+        body: textBody,
+        htmlBody: htmlBody
+      });
+
+      return ContentService.createTextOutput(
+        JSON.stringify({ status: 'success', message: 'Email sent successfully' })
+      ).setMimeType(ContentService.MimeType.JSON);
+
+    } catch (error) {
+      return ContentService.createTextOutput(
+        JSON.stringify({ status: 'error', message: error.toString() })
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
+  // Default health check response
   return ContentService.createTextOutput(
-    JSON.stringify({
-      status: 'success',
-      message: 'Webhook is active. Use POST to send emails.'
-    })
+    JSON.stringify({ status: 'success', message: 'Webhook is active.' })
   ).setMimeType(ContentService.MimeType.JSON);
 }
 
